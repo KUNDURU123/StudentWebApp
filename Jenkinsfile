@@ -1,12 +1,14 @@
-
 pipeline {
     agent any
 
-    stages {
+    triggers {
+        pollSCM('H/2 * * * *')
+    }
 
+    stages {
         stage('Checkout') {
             steps {
-                echo 'Checking out source code'
+                echo 'Checking out source code from GitHub'
                 checkout scm
             }
         }
@@ -14,35 +16,48 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Executing Maven build script'
-                bat 'build.bat'
+                bat 'mvn clean package'
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Running unit tests'
+                echo 'Running application test cases'
                 bat 'mvn test'
             }
         }
 
-        stage('Deploy') {
+        stage('Static Analysis') {
             steps {
-                echo 'Deploying application to Tomcat'
+                echo 'Static analysis stage'
+                echo 'Connect SonarQube here if configured'
+            }
+        }
 
-                bat '''
-                copy /Y target\\StudentWebApp.war C:\\apache-tomcat-11.0.29\\webapps\\StudentWebApp.war
-                '''
+        stage('Package') {
+            steps {
+                echo 'Packaging application'
+                archiveArtifacts artifacts: 'target/*.war',
+                                 allowEmptyArchive: false
             }
         }
     }
 
     post {
         success {
-            echo 'Pipeline executed successfully!'
+            echo 'SUCCESS: StudentWebApp pipeline completed successfully!'
+            script {
+                currentBuild.description =
+                    'Application Build - SUCCESS'
+            }
         }
 
         failure {
-            echo 'Pipeline execution failed!'
+            echo 'FAILURE: Please check the build console output.'
+            script {
+                currentBuild.description =
+                    'Application Build - FAILED'
+            }
         }
     }
 }
